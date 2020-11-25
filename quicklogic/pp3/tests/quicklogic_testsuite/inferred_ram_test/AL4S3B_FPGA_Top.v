@@ -4,7 +4,7 @@
 // -----------------------------------------------------------------------------
 // file           : AL4S3B_FPGA_top.v
 // author         : SSG
-// company        : QuickLogic Corp
+// company        : QuickLogic Corporation
 // created        : 2020/05/27	
 // last update    : 2020/05/27
 // platform       : ArcticLink 4 S3B
