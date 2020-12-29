@@ -111,8 +111,8 @@ wire             I2S_DIN_i        ;
 //
 wire            WB_CLK         ; // Selected FPGA Clock
 
-wire            Sys_Clk0       ; // Selected FPGA Clock
-wire            Sys_Clk0_Rst   ; // Selected FPGA Reset
+wire            Clk16       ; // Selected FPGA Clock
+wire            Clk16_Rst   ; // Selected FPGA Reset
 
 // Wishbone Bus Signals
 //
@@ -179,9 +179,9 @@ assign I2S_CLK_o = I2S_CLK_i;//for bootstrap issue fix
 //
 // Note: Reset the FPGA IP on either the AHB or clock domain reset signals.
 //
-//gclkbuff u_gclkbuff_reset ( .A(Sys_Clk0_Rst | WB_RST) , .Z(WB_RST_FPGA) );
-assign WB_RST_FPGA = Sys_Clk0_Rst | WB_RST ;
-gclkbuff u_gclkbuff_clock ( .A(Sys_Clk0             ) , .Z(WB_CLK       ) );
+//gclkbuff u_gclkbuff_reset ( .A(Clk16_Rst | WB_RST) , .Z(WB_RST_FPGA) );
+assign WB_RST_FPGA = Clk16_Rst | WB_RST ;
+gclkbuff u_gclkbuff_clock ( .A(Clk16             ) , .Z(WB_CLK       ) );
 
 //gclkbuff u_gclkbuff_clock4M ( .A(CLK_4MHZ_IN             ) , .Z(clk_4mhz       ) );
 //gclkbuff u_gclkbuff_clock12M ( .A(CLK_12M_IN             ) , .Z(CLK_12M       ) );
@@ -293,11 +293,11 @@ qlal4s3b_cell_macro              u_qlal4s3b_cell_macro
     //
     // FB Clocks
     //
-    .Sys_Clk0                  ( Sys_Clk0                    ), // output
-    .Sys_Clk0_Rst              ( Sys_Clk0_Rst                ), // output
-    //.Sys_Clk1                  ( CLK_12M_IN                  ), // output
-    .Sys_Clk1                  ( SYS_C21_ACSLIPREF_Clk_sig                  ), // output
-    .Sys_Clk1_Rst              (                             ), // output
+    .Clk16                     ( Clk16                       ), // output
+    .Clk16_Rst                 ( Clk16_Rst                   ), // output
+    //.Clk21                   ( CLK_12M_IN                  ), // output
+    .Clk21                     ( SYS_C21_ACSLIPREF_Clk_sig   ), // output
+    .Clk21_Rst                 (                             ), // output
     //
     // Packet FIFO
     //
