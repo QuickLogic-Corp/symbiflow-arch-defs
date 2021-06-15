@@ -17,6 +17,9 @@ endif
 
 .PHONY: all env
 
+LM:
+	@echo "this is the changes to check CI"
+
 all: env
 	cd build && $(MAKE)
 
