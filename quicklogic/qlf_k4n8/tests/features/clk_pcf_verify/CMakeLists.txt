@@ -1,16 +1,15 @@
-set(CLK_TREE_D ${QL_DESIGNS_DIR}/clock_tree_design/clock_tree_design.v)
-add_file_target(FILE clock_tree_design.pcf)
-
+set(SOURCE ${QL_DESIGNS_DIR}/counter_4clk/counter_4clk.v)
+add_file_target(FILE counter_4clk.pcf)
 
 add_fpga_target(
-  NAME clock_tree_design_test1-umc22-adder
-  TOP clock_tree_design
+  NAME clk_pcf_verify_test-umc22-adder
+  TOP top
   BOARD qlf_k4n8-qlf_k4n8_umc22_slow_board
-  SOURCES ${CLK_TREE_D}
-  INPUT_IO_FILE clock_tree_design.pcf
+  SOURCES ${SOURCE}
+  INPUT_IO_FILE counter_4clk.pcf
   EXPLICIT_ADD_FILE_TARGET
-  NET_PATCH_EXTRA_ARGS "--pcf-constraints ${CMAKE_CURRENT_SOURCE_DIR}/clock_tree_design.pcf"
+  NET_PATCH_EXTRA_ARGS "--pcf-constraints ${CMAKE_CURRENT_SOURCE_DIR}/counter_4clk.pcf"
 
   )
 
-add_dependencies(all_qlf_k4n8_tests_adder    clock_tree_design_test1-umc22-adder_bit)
+add_dependencies(all_qlf_k4n8_tests_adder clk_pcf_verify_test-umc22-adder_bit)

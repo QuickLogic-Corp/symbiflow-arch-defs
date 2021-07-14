@@ -1,4 +1,5 @@
 set(CLK_TREE ${QL_DESIGNS_DIR}/clock_tree_design/clock_tree_design.v)
+add_file_target(FILE ${CLK_TREE} SCANNER_TYPE verilog)
 
 add_fpga_target(
   NAME clock_tree_design_test-gf12-no-adder
