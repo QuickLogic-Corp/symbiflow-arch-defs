@@ -625,6 +625,52 @@ def annotate_net_endpoints(
         )
 
 
+def annotate_global_routes(clb_graph, global_routes):
+    """
+    Assigns global routes with nets from the CLB graph. Throws an error on a
+    net conflict
+    """
+
+    for node in clb_graph.nodes.values():
+
+        # Consider only top-level SOURCE and SINK nodes
+        if node.type not in [NodeType.SOURCE, NodeType.SINK]:
+            continue
+        if node.path.count(".") > 1:
+            continue
+
+        # No net
+        if not node.net:
+            continue
+
+        # Get port name
+        path = [PathNode.from_string(p) for p in node.path.split(".")]
+        port = str(path[-1])
+
+        # Not a global route
+        if port not in global_routes:
+            continue
+
+        # Check net
+        net = global_routes[port]
+        if net is not None and net != node.net:
+            logging.critical(
+                "Global route conflict! Route '{}', nets '{}', '{}'".format(
+                    port, net, node.net
+                )
+            )
+            exit(-1)
+
+        # Assign
+        if net is None:
+            logging.debug(
+                "    Net '{}' assigned to global route '{}'".format(
+                    node.net, port
+                )
+            )
+            global_routes[port] = node.net
+
+
 def rotate_truth_table(table, rotation_map):
     """
     Rotates address bits of the truth table of a LUT given a bit map.
@@ -1064,6 +1110,11 @@ def main():
         help="Controls whether buffer LUTs are to be absorbed downstream"
     )
     parser.add_argument(
+        "--no_global_clocks",
+        action="store_true",
+        help="Disables treating top-level CLB clock inputs as global"
+    )
+    parser.add_argument(
         "--dump-dot",
         action="store_true",
         help="Dump graphviz .dot files for pb_type graphs"
@@ -1118,6 +1169,31 @@ def main():
         name: PbType.from_etree(elem)
         for name, elem in xml_clbs.items()
     }
+
+    # Identify global routes
+    global_routes = {}
+    global_clock_routes = set()
+
+    for pb_type in clb_pbtypes.values():
+        for port in pb_type.ports.values():
+
+            # Has to be either explicitly defined as a global port or be a
+            # clock input when they are treated as global.
+            if not port.is_global and \
+               not (port.type == PortType.CLOCK and not args.no_global_clocks):
+                continue
+
+            for pinspec in port.yield_pins():
+                name = "{}[{}]".format(*pinspec)
+                global_routes[name] = None
+
+                if port.type == PortType.CLOCK:
+                    global_clock_routes.add(name)
+
+    # DEBUG
+    logging.debug(" global routes:")
+    for name in sorted(global_routes.keys()):
+        logging.debug("  " + name)
 
     # Build a list of models
     logging.info("Building primitive models...")
@@ -1192,8 +1268,86 @@ def main():
         total_blocks += clb_block.count_leafs()
     logging.debug(" {} leaf blocks".format(total_blocks))
 
+    # Identify global clock nets
+    global_clock_nets = set()
+    for clb_block in packed_netlist.blocks.values():
+        for port in clb_block.ports.values():
+            for pin in range(port.width):
+
+                # Format port pin name
+                name = "{}[{}]".format(port.name, pin)
+
+                # Not a global clock route port, skip
+                if name not in global_clock_routes:
+                    continue
+
+                # Get connected net
+                net = clb_block.find_net_for_port(port.name, pin)
+                if net is None:
+                    continue
+
+                global_clock_nets.add(net)
+
+    logging.info(" {} global clocks".format(len(global_clock_nets)))
+    for net in global_clock_nets:
+        logging.debug("  {}".format(net))
+
+    # Too many clocks, throw an error
+    if len(global_clock_nets) > len(global_clock_routes):
+        logging.critical(
+            " Too many global clocks ({}) for this architecture ({})".format(
+                len(global_clock_nets),
+                len(global_clock_routes),
+            )
+        )
+        exit(-1)
+
     init_time = time.perf_counter() - init_time
     repack_time = time.perf_counter()
+
+    # Constrain unconstrained global clocks
+    if global_clock_nets:
+
+        logging.info("Constraining unconstrained global clock nets...")
+
+        # Identify unconstrainted global clock nets and routes
+        free_clock_nets = set(global_clock_nets)
+        free_clock_routes = set(global_clock_routes)
+
+        for constraint in repacking_constraints:
+
+            if constraint.net in global_clock_nets:
+                free_clock_nets.discard(constraint.net)
+
+            name = "{}[{}]".format(constraint.port, constraint.pin)
+            if name in free_clock_routes:
+                free_clock_routes.discard(name)
+
+        # Cannot constrain all
+        if len(free_clock_routes) < len(free_clock_nets):
+            logging.critical(
+                " Cannot constrain all free global clocks ({}) as there are"
+                " to few global clock routes available ({})".format(
+                    len(free_clock_nets), len(free_clock_routes)
+                )
+            )
+            exit(-1)
+
+        # Make the constraints
+        block_types = set([b.type for b in packed_netlist.blocks.values()])
+        for net, port in zip(free_clock_nets, free_clock_routes):
+            for block_type in block_types:
+                constraint = RepackingConstraint(
+                    net=net, block_type=block_type, port_spec=port
+                )
+                repacking_constraints.append(constraint)
+
+                logging.debug(
+                    " {}: {}.{}[{}]".format(
+                        constraint.net, constraint.block_type, constraint.port,
+                        constraint.pin
+                    )
+                )
 
     # Check if the repacking constraints do not refer to any non-existent nets
     if repacking_constraints:
@@ -1384,6 +1538,8 @@ def main():
             block=clb_block,
             constraints=repacking_constraints
         )
+
+        annotate_global_routes(clb_graph=graph, global_routes=global_routes)
 
         # For repacked leafs
         for block, rule, (path, dst_pbtype) in blocks_to_repack:

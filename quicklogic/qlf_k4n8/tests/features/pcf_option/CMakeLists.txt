@@ -1,13 +1,13 @@
-set(CLK_TREE ${QL_DESIGNS_DIR}/clock_tree_design/clock_tree_design.v)
-add_file_target(FILE clock_tree_design.pcf)
+set(SOURCE ${QL_DESIGNS_DIR}/counter_16bit/counter_16bit.v)
+add_file_target(FILE counter_16bit.pcf)
 
 add_fpga_target(
-  NAME clock_tree_design_test2-umc22-adder
-  TOP clock_tree_design
+  NAME pcf_option_test-umc22-adder
+  TOP top
   BOARD qlf_k4n8-qlf_k4n8_umc22_slow_board
-  INPUT_IO_FILE clock_tree_design.pcf
-  SOURCES ${CLK_TREE}
+  INPUT_IO_FILE counter_16bit.pcf
+  SOURCES ${SOURCE}
   EXPLICIT_ADD_FILE_TARGET
   )
 
-add_dependencies(all_qlf_k4n8_tests_adder   clock_tree_design_test2-umc22-adder_bit)
+add_dependencies(all_qlf_k4n8_tests_adder pcf_option_test-umc22-adder_bit)

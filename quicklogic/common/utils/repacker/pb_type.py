@@ -44,13 +44,14 @@ class Port:
     A port of pb_type
     """
 
-    def __init__(self, type, name, width=1, cls=None):
+    def __init__(self, type, name, width=1, is_global=False, cls=None):
         """
         Basic constructor
         """
         self.type = type
         self.name = name
         self.width = width
+        self.is_global = is_global
         self.cls = cls
 
     @staticmethod
@@ -65,6 +66,7 @@ class Port:
             type=PortType.from_string(elem.tag),
             name=elem.attrib["name"],
             width=int(elem.get("num_pins", "1")),
+            is_global=elem.get("is_non_clock_global", "false") == "true",
             cls=elem.get("port_class", None)
         )
 
